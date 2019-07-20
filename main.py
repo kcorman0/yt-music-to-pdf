@@ -5,7 +5,33 @@ import pafy
 import os
 import time
 from cv2 import cv2
+from fpdf import FPDF
 import shutil
+
+# Convert list of images (1 for each line of music) into a PDF
+def imgsToPDF(fileName, imgList, dir = ''):
+    pdf = FPDF()
+    pdf.add_page()
+
+    curH = 0
+    for img in imgList:
+        cvImg = cv2.imread(img)
+        height, width, channels = cvImg.shape
+
+        pdf.image(img, x=curH, y=0, w=width, h=height)
+        curH = curH + height
+
+# Crop the current frame and save it in given directory
+def saveLine(frame, frames, dir = '', firstLine = False):
+    height, width, channels = frame.shape
+
+    if firstLine:
+        cropped_img = frame[0:y_upperbound, 0:width]
+    else:
+        cropped_img = frame[y_lowerbound:y_upperbound, 0:width]
+    # cv2.imshow("frame%d" % frames, cropped_img)
+    cv2.imwrite(dir + "frame%d.png" % frames, cropped_img)
+    imgList.append(dir + "frame%d.png" % frames)
 
 # Constants (might need to change)
 link = 'https://www.youtube.com/watch?v=r4MwfNzUq9k'
@@ -40,12 +66,11 @@ bar_x = []
 # Read until video is completed
 first_frame = True
 frames = 0
+imgList = []
 while(capture.isOpened()):
     # Capture frame-by-frame
     ret, frame = capture.read()
-
-    if frames < 35:
-        frames += 1
+    frames += 1
 
     if ret == True:
         cur_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -76,7 +101,7 @@ while(capture.isOpened()):
             if cv2.contourArea(contour) < 70:
                 continue
             (x, y, w, h) = cv2.boundingRect(contour)
-            cv2.rectangle(frame, (x,y), (x+w, y+h), (255, 0, 0), 3)
+            cv2.rectangle(cur_frame, (x,y), (x+w, y+h), (255, 0, 0), 3)
 
             if y+h > y_upperbound:
                 y_upperbound = y+h
@@ -89,26 +114,17 @@ while(capture.isOpened()):
                 tallest_x = x
 
             # For debugging
-            # cv2.putText(frame, str(y), (30, 60 + count*60), cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
+            # cv2.putText(cur_frame, str(y), (30, 60 + count*60), cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
             # count += 1
 
         # If there is a large enough gap between X values, detect a new line
         for x in bar_x:
             if frames == 35 and first_frame and y_upperbound != -1:
-                first_frame = False
-
-                height, width, channels = frame.shape
-                cropped_img = frame[0:y_upperbound, 0:width]
-
-                cv2.imshow("test", cropped_img)
+                saveLine(frame, frames, tempDirectory, True)
+                break
 
             if tallest_x != -1 and x != -1 and abs(tallest_x - x) > 200:
-                print("NEW LINE")
-                height, width, channels = frame.shape
-                cropped_img = frame[y_lowerbound:y_upperbound, 0:width]
-
-                cv2.imshow("test", cropped_img)
-
+                saveLine(frame, frames, tempDirectory)
                 first = cur_frame
                 bar_x = []
                 break
@@ -118,10 +134,10 @@ while(capture.isOpened()):
             bar_x.pop(0)
         bar_x.append(tallest_x)
 
-        # cv2.imshow('Capturing', cur_frame)
-        cv2.imshow('Frame',frame)
-        cv2.imshow('delta', delta_frame)
-        cv2.imshow('thresh', threshold_delta)
+        cv2.imshow('Frame', frame)
+        cv2.imshow('Cur frame', cur_frame)
+        cv2.imshow('Delta', delta_frame)
+        cv2.imshow('Thresh', threshold_delta)
 
         # Press Q on keyboard to  exit
         if cv2.waitKey(25) & 0xFF == ord('q'):
@@ -135,6 +151,9 @@ capture.release()
  
 # Closes all the frames
 cv2.destroyAllWindows()
+
+# Turn series of images into a PDF
+imgsToPDF(vid.title, imgList)
 
 # Remove temp folder
 if os.path.isdir(tempDirectory):
