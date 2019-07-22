@@ -8,18 +8,36 @@ from cv2 import cv2
 from fpdf import FPDF
 import shutil
 
+PDF_WIDTH = 210
+PDF_HEIGHT = 297
+
 # Convert list of images (1 for each line of music) into a PDF
 def imgsToPDF(fileName, imgList, dir = ''):
     pdf = FPDF()
     pdf.add_page()
 
+    mm_multiplier = 0.264583333 # FPDF works in millimeters
     curH = 0
     for img in imgList:
+        # print(img)
         cvImg = cv2.imread(img)
-        height, width, channels = cvImg.shape
 
-        pdf.image(img, x=curH, y=0, w=width, h=height)
-        curH = curH + height
+        height, width, channels = cvImg.shape
+        height *= mm_multiplier
+        width *= mm_multiplier
+
+        new_width = PDF_WIDTH
+        new_height = (new_width * height) / width
+
+        if curH + new_height + 2 > PDF_HEIGHT:
+            pdf.add_page()
+            curH = 0
+
+        pdf.image(img, x=0, y=curH, w=new_width, h=new_height)
+        curH = curH + new_height + 2
+
+    pdf.output(dir + fileName + ".pdf", "F")
+    print("PDF created with name " + fileName + ".pdf")
 
 # Crop the current frame and save it in given directory
 def saveLine(frame, frames, dir = '', firstLine = False):
@@ -33,9 +51,9 @@ def saveLine(frame, frames, dir = '', firstLine = False):
     cv2.imwrite(dir + "frame%d.png" % frames, cropped_img)
     imgList.append(dir + "frame%d.png" % frames)
 
-# Constants (might need to change)
+# # Constants (might need to change)
 link = 'https://www.youtube.com/watch?v=r4MwfNzUq9k'
-# link = 'https://www.youtube.com/watch?v=YEEbpwP9cTw'
+# # link = 'https://www.youtube.com/watch?v=YEEbpwP9cTw'
 tempDirectory = 'temp/'
 
 # Make temporary directory for screenshots
@@ -60,7 +78,7 @@ capture = cv2.VideoCapture(filename)
 if (capture.isOpened() == False):
     print("Error: Cannot open video")
 
-# Array to store the 3 most recent X values of the bar moving across the notes
+# Array to store the 5 most recent X values of the bar moving across the notes
 bar_x = []
 
 # Read until video is completed
@@ -118,19 +136,24 @@ while(capture.isOpened()):
             # count += 1
 
         # If there is a large enough gap between X values, detect a new line
+        prevTrue = False
         for x in bar_x:
             if frames == 35 and first_frame and y_upperbound != -1:
-                saveLine(frame, frames, tempDirectory, True)
-                break
+                if prevTrue:
+                    saveLine(frame, frames, tempDirectory, True)
+                    break
+                prevTrue = True
 
             if tallest_x != -1 and x != -1 and abs(tallest_x - x) > 200:
-                saveLine(frame, frames, tempDirectory)
-                first = cur_frame
-                bar_x = []
-                break
+                if prevTrue:
+                    saveLine(frame, frames, tempDirectory)
+                    first = cur_frame
+                    bar_x = []
+                    break
+                prevTrue = True
 
         # Update the x values
-        if len(bar_x) > 3:
+        if len(bar_x) > 5:
             bar_x.pop(0)
         bar_x.append(tallest_x)
 
@@ -156,5 +179,5 @@ cv2.destroyAllWindows()
 imgsToPDF(vid.title, imgList)
 
 # Remove temp folder
-if os.path.isdir(tempDirectory):
-    shutil.rmtree(tempDirectory)
+# if os.path.isdir(tempDirectory):
+    # shutil.rmtree(tempDirectory)
