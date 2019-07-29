@@ -4,6 +4,7 @@
 import pafy
 import os
 import time
+import numpy as np
 from cv2 import cv2
 from fpdf import FPDF
 import shutil
@@ -47,13 +48,12 @@ def saveLine(frame, frames, dir = '', firstLine = False):
         cropped_img = frame[0:y_upperbound, 0:width]
     else:
         cropped_img = frame[y_lowerbound:y_upperbound, 0:width]
-    # cv2.imshow("frame%d" % frames, cropped_img)
     cv2.imwrite(dir + "frame%d.png" % frames, cropped_img)
     imgList.append(dir + "frame%d.png" % frames)
 
-# # Constants (might need to change)
-link = 'https://www.youtube.com/watch?v=r4MwfNzUq9k'
-# # link = 'https://www.youtube.com/watch?v=YEEbpwP9cTw'
+# Constants (might need to change)
+# link = 'https://www.youtube.com/watch?v=r4MwfNzUq9k'
+link = 'https://www.youtube.com/watch?v=YEEbpwP9cTw'
 tempDirectory = 'temp/'
 
 # Make temporary directory for screenshots
@@ -91,21 +91,28 @@ while(capture.isOpened()):
     frames += 1
 
     if ret == True:
-        cur_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        cur_frame = frame.copy()
 
-        if first is None:
-            first = cur_frame
-            continue
+        # if first is None:
+        #     first = cur_frame
+        #     continue
 
-        delta_frame = cv2.subtract(first, cur_frame)
-        threshold_delta = cv2.threshold(delta_frame, 20, 255, cv2.THRESH_BINARY)[1]
-        (_,cnts,_) = cv2.findContours(threshold_delta.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        GREEN_MIN = np.array([20, 50, 70],np.uint8)
+        GREEN_MAX = np.array([90, 255, 255],np.uint8)
+
+        hsv_img = cv2.cvtColor(frame,cv2.COLOR_BGR2HSV)
+
+        frame_threshed = cv2.inRange(hsv_img, GREEN_MIN, GREEN_MAX)
+
+        # delta_frame = cv2.subtract(first, cur_frame)
+        # threshold_delta = cv2.threshold(delta_frame, 20, 255, cv2.THRESH_BINARY)[1]
+        (_,cnts,_) = cv2.findContours(frame_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         # When PDF is scrolled, frame to compare to is reset
         # This is to ensure only the moving slider is picked up
-        if (len(cnts) > 100):
-            first = cur_frame
-            continue
+        # if (len(cnts) > 100):
+        #     first = cur_frame
+        #     continue
 
         # count = 0
         tallest = -1
@@ -114,11 +121,14 @@ while(capture.isOpened()):
         y_upperbound = -1
         y_lowerbound = float('inf')
 
-        for contour in cnts:
-            # Should have option to change this tolerance as it causes some videos to break
-            if cv2.contourArea(contour) < 70:
-                continue
+        for idx, contour in enumerate(cnts):
             (x, y, w, h) = cv2.boundingRect(contour)
+
+            # Should have option to change this tolerance as it causes some videos to break
+            if cv2.contourArea(contour) < 1:
+                del cnts[idx]
+                continue
+
             cv2.rectangle(cur_frame, (x,y), (x+w, y+h), (255, 0, 0), 3)
 
             if y+h > y_upperbound:
@@ -141,16 +151,20 @@ while(capture.isOpened()):
             if frames == 35 and first_frame and y_upperbound != -1:
                 if prevTrue:
                     saveLine(frame, frames, tempDirectory, True)
+                    print("Line")
                     break
                 prevTrue = True
+                print("First time")
 
             if tallest_x != -1 and x != -1 and abs(tallest_x - x) > 200:
                 if prevTrue:
                     saveLine(frame, frames, tempDirectory)
-                    first = cur_frame
+                    print("Line")
+                    # first = cur_frame
                     bar_x = []
                     break
                 prevTrue = True
+                print("First time")
 
         # Update the x values
         if len(bar_x) > 5:
@@ -159,8 +173,9 @@ while(capture.isOpened()):
 
         cv2.imshow('Frame', frame)
         cv2.imshow('Cur frame', cur_frame)
-        cv2.imshow('Delta', delta_frame)
-        cv2.imshow('Thresh', threshold_delta)
+        cv2.imshow("Threshed", frame_threshed)
+        # cv2.imshow('Delta', delta_frame)
+        # cv2.imshow('Thresh', threshold_delta)
 
         # Press Q on keyboard to  exit
         if cv2.waitKey(25) & 0xFF == ord('q'):
@@ -179,5 +194,5 @@ cv2.destroyAllWindows()
 imgsToPDF(vid.title, imgList)
 
 # Remove temp folder
-# if os.path.isdir(tempDirectory):
-    # shutil.rmtree(tempDirectory)
+if os.path.isdir(tempDirectory):
+    shutil.rmtree(tempDirectory)

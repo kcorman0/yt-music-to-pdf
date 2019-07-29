@@ -1,1 +1,4 @@
-# yt-music-to-pdf
+# PDF Sheet Music Generator
+There are many YouTube videos that scroll through sheet music but do not provide a PDF, or have it behind a paywall. As someone who has ran into this problem many times, I created this project to turned these videos into PDFs for free. 
+
+After trying a variety of different vision processing methods, it seems that searching for a specific color in a HSV space is the most reliable method (as there is almost always a color bar that moves through the music). Whenever there is a large jump in the bar's X value, it has moved onto the next line of music and the program will take a screenshot of the new line. At the end, all of the screenshots will be compiled into a PDF. Below is an image of the video filtered for a specific color:
