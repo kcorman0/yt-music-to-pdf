@@ -42,7 +42,7 @@ def imgsToPDF(fileName, imgList, dir = ''):
     print("PDF created with name " + fileName + ".pdf")
 
 # Crop the current frame and save it in given directory
-def saveLine(frame, frames, y_upperbound, y_lowerbound, dir = '', firstLine = False):
+def saveLine(frame, frames, y_upperbound, y_lowerbound, imgList, dir = '', firstLine = False):
     height, width, channels = frame.shape
 
     if firstLine:
@@ -56,7 +56,6 @@ def saveLine(frame, frames, y_upperbound, y_lowerbound, dir = '', firstLine = Fa
 # link = 'https://www.youtube.com/watch?v=r4MwfNzUq9k'
 # link = 'https://www.youtube.com/watch?v=YEEbpwP9cTw'
 tempDirectory = 'temp/'
-imgList = []
 
 def scanVideo(link, bar_color):
     # Make temporary directory for screenshots
@@ -83,12 +82,19 @@ def scanVideo(link, bar_color):
     bar_color = bar_color.lstrip('#')
     rgb = list(int(bar_color[i:i+2], 16) for i in (0, 2, 4))
     hsv = colorsys.rgb_to_hsv(rgb[0]/255, rgb[1]/255, rgb[2]/255)
-    hsv = [hsv[0] * 179, hsv[1] * 255, hsv[2] * 255]
-    print("hsv: ", hsv)
 
-    # Lower and upper bounds so make sure it picks up the bar
     hsv_lower = [val - .1 for val in hsv]
     hsv_upper = [val + .1 for val in hsv]
+    hsv_lower = [hsv_lower[0] * 179, (hsv_lower[1] * 255) - 60, hsv_lower[2] * 255]
+    hsv_upper = [hsv_upper[0] * 179, 255, 255]
+    # hsv = [hsv[0] * 179, hsv[1] * 255, hsv[2] * 255]
+
+    # Lower and upper bounds so make sure it picks up the bar
+    # hsv_lower = [val - .1 for val in hsv]
+    # hsv_upper = [val + .1 for val in hsv]
+
+    print("hsvL: ", hsv_lower)
+    print("hsvU: ", hsv_upper)
 
     # OpenCV
     capture = cv2.VideoCapture(filename)
@@ -167,13 +173,13 @@ def scanVideo(link, bar_color):
             for x in bar_x:
                 if frames == 35 and first_frame and y_upperbound != -1:
                     if prevTrue:
-                        saveLine(frame, frames, y_upperbound, y_lowerbound, tempDirectory, True)
+                        saveLine(frame, frames, y_upperbound, y_lowerbound, imgList, tempDirectory, True)
                         break
                     prevTrue = True
 
                 if tallest_x != -1 and x != -1 and abs(tallest_x - x) > 200:
                     if prevTrue:
-                        saveLine(frame, frames, y_upperbound, y_lowerbound, tempDirectory)
+                        saveLine(frame, frames, y_upperbound, y_lowerbound, imgList, tempDirectory)
                         # first = cur_frame
                         bar_x = []
                         break
