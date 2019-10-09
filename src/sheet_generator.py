@@ -83,15 +83,12 @@ def scanVideo(link, bar_color):
     rgb = list(int(bar_color[i:i+2], 16) for i in (0, 2, 4))
     hsv = colorsys.rgb_to_hsv(rgb[0]/255, rgb[1]/255, rgb[2]/255)
 
+    # Lower and upper bounds so make sure it picks up the bar
     hsv_lower = [val - .1 for val in hsv]
     hsv_upper = [val + .1 for val in hsv]
     hsv_lower = [hsv_lower[0] * 179, (hsv_lower[1] * 255) - 60, hsv_lower[2] * 255]
     hsv_upper = [hsv_upper[0] * 179, 255, 255]
     # hsv = [hsv[0] * 179, hsv[1] * 255, hsv[2] * 255]
-
-    # Lower and upper bounds so make sure it picks up the bar
-    # hsv_lower = [val - .1 for val in hsv]
-    # hsv_upper = [val + .1 for val in hsv]
 
     print("hsvL: ", hsv_lower)
     print("hsvU: ", hsv_upper)
@@ -117,8 +114,6 @@ def scanVideo(link, bar_color):
         if ret == True:
             cur_frame = frame.copy()
 
-            # hsv_lower = np.array([20, 50, 70],np.uint8)
-            # hsv_upper = np.array([90, 255, 255],np.uint8)
             hsv_lower = np.array(hsv_lower ,np.uint8)
             hsv_upper = np.array(hsv_upper, np.uint8)
 
@@ -147,7 +142,7 @@ def scanVideo(link, bar_color):
                 (x, y, w, h) = cv2.boundingRect(contour)
 
                 # Should have option to change this tolerance as it causes some videos to break
-                if cv2.contourArea(contour) < 1:
+                if cv2.contourArea(contour) < 0:
                     del cnts[idx]
                     continue
 
