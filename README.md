@@ -17,6 +17,6 @@ Below is an example of HSV filtering:
 
 ![Web](https://raw.githubusercontent.com/kcorman0/yt-music-to-pdf/master/images/filtered.png)
 
-Final PDF: 
+Final PDF (bottom doesn't cut off in actual PDF): 
 
 ![Final](https://raw.githubusercontent.com/kcorman0/yt-music-to-pdf/master/images/example_pdf.png)
